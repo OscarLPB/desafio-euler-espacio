@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA 1962: Simulación Euler en el Espacio | Proyecto Mercury</title>
+    <style>
+        :root {
+            --bg-space: #070b14;
+            --bg-panel: #0d1527;
+            --bg-card: #141f36;
+            --border-panel: #1e3054;
+            --border-glow: #38bdf8;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --nasa-blue: #0284c7;
+            --nasa-red: #ef4444;
+            --accent-cyan: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-amber: #f59e0b;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-space);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Mission Header */
+        header {
+            background: linear-gradient(180deg, #0f1c38 0%, #090e1c 100%);
+            border-bottom: 2px solid var(--border-panel);
+            padding: 14px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nasa-badge {
+            background: var(--nasa-red);
+            color: white;
+            font-weight: 900;
+            letter-spacing: 2px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .mission-titles h1 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mission-titles p {
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        .mission-clock {
+            background: #050811;
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .clock-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .clock-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-amber);
+            letter-spacing: 1px;
+        }
+
+        /* Main Container */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr 420px;
+            gap: 16px;
+            padding: 16px;
+            flex: 1;
+        }
+
+        @media (max-width: 1400px) {
+            .main-layout {
+                grid-template-columns: 340px 1fr;
+            }
+            .telemetry-column {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            .telemetry-column {
+                grid-column: span 1;
+            }
+        }
+
+        /* Panel Styling */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-panel);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-panel);
+            padding-bottom: 10px;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Form Controls */
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .param-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .param-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .param-label span:last-child {
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        .param-input {
+            background: #070c17;
+            border: 1px solid var(--border-panel);
+            border-radius: 4px;
+            color: white;
+            padding: 7px 10px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .param-input:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .btn {
+            background: var(--nasa-blue);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-launch {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            grid-column: span 2;
+            padding: 12px;
+            font-size: 0.95rem;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-pause {
+            background: #ca8a04;
+        }
+
+        .btn-reset {
+            background: #475569;
+        }
+
+        .btn-export {
+            background: #0284c7;
+            grid-column: span 2;
+        }
+
+        /* Preset Step Buttons */
+        .step-presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .btn-preset {
+            background: var(--bg-card);
+            border: 1px solid var(--border-panel);
+            color: var(--text-muted);
+            border-radius: 4px;
+            padding: 6px 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .btn-preset.active, .btn-preset:hover {
+            background: #0369a1;
+            color: white;
+            border-color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        /* Canvas Simulation Stage */
+        .stage-container {
+            position: relative;
+            background: #040711;
+            border-radius: 8px;
+            border: 1px solid var(--border-panel);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 480px;
+        }
+
+        #rocketCanvas {
+            width: 100%;
+            height: 100%;
+            flex: 1;
+            display: block;
+        }
+
+        .stage-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .altitude-hud {
+            background: rgba(13, 21, 39, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-family: var(--font-mono);
+        }
+
+        .hud-val {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #38bdf8;
+        }
+
+        .hud-unit {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Telemetry Cards */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .telem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .telem-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .telem-number {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .telem-sub {
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .val-exact {
+            color: var(--accent-green);
+        }
+
+        .val-err {
+            color: #f87171;
+            font-weight: bold;
+        }
+
+        /* Mission Safety Status Badge */
+        .safety-banner {
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+
+        .safety-banner.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--nasa-red);
+            color: #fca5a5;
+        }
+
+        .safety-banner.success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid var(--accent-green);
+            color: #86efac;
+        }
+
+        .safety-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Charts & Visual Analytics */
+        .charts-section {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        canvas.analytics-chart {
+            width: 100%;
+            height: 160px;
+            display: block;
+            background: #080d19;
+            border-radius: 4px;
+        }
+
+        /* Iteration Table */
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            overflow: hidden;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        table.mission-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-align: right;
+        }
+
+        table.mission-table th {
+            background: #0c162c;
+            color: var(--accent-cyan);
+            padding: 7px 8px;
+            position: sticky;
+            top: 0;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-panel);
+            text-align: right;
+        }
+
+        table.mission-table th:first-child,
+        table.mission-table td:first-child {
+            text-align: center;
+        }
+
+        table.mission-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #172440;
+            color: #e2e8f0;
+        }
+
+        table.mission-table tr:hover {
+            background-color: rgba(56, 189, 248, 0.1);
+        }
+
+        /* Movie Tribute Bar */
+        .movie-bar {
+            background: #090e1a;
+            border-top: 1px solid var(--border-panel);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .movie-bar strong {
+            color: var(--accent-amber);
+        }
+
+        .tab-btn-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            background: #1e293b;
+            color: var(--text-muted);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            background: var(--nasa-blue);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MISSION HEADER -->
+    <header>
+        <div class="logo-area">
+            <span class="nasa-badge">NASA</span>
+            <div class="mission-titles">
+                <h1>PROYECTO MERCURY • MISIÓN 1962</h1>
+                <p>SIMULADOR NUMÉRICO DE ASCENSO VERTICAL • EL MÉTODO DE EULER</p>
+            </div>
+        </div>
+        <div class="mission-clock">
+            <div>
+                <div class="clock-label">TIEMPO DE MISIÓN</div>
+                <div class="clock-value" id="hudClock">T+00.00s</div>
+            </div>
+            <div style="border-left: 1px solid var(--border-panel); padding-left: 12px;">
+                <div class="clock-label">ESTADO DE TELEMETRÍA</div>
+                <div style="color: #22c55e; font-weight: bold; font-size: 0.85rem;" id="hudStatus">STANDBY</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD -->
+    <div class="main-layout">
+
+        <!-- COLUMN 1: CONTROLS & MODEL PARAMETERS -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    Parámetros de Vuelo
+                </div>
+                <span style="font-size: 0.75rem; color: var(--accent-amber); font-family: var(--font-mono);">NASA STD-62</span>
+            </div>
+
+            <div class="param-group">
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Masa del Cohete (m)</span>
+                        <span id="lblM">1.000 kg</span>
+                    </div>
+                    <input type="number" id="inpM" class="param-input" value="1000" min="100" max="50000" step="100">
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Empuje del Motor (T)</span>
+                        <span id="lblT">15.000 N</span>
+                    </div>
+                    <input type="number" id="inpT" class="param-input" value="15000" min="1000" max="100000" step="500">
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Aceleración Gravedad (g)</span>
+                        <span id="lblG">9,81 m/s²</span>
+                    </div>
+                    <input type="number" id="inpG" class="param-input" value="9.81" min="1" max="25" step="0.01">
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Resistencia Aire (k)</span>
+                        <span id="lblK">100 kg/s</span>
+                    </div>
+                    <input type="number" id="inpK" class="param-input" value="100" min="0" max="1000" step="10">
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Tiempo de Simulación (t)</span>
+                        <span id="lblTime">20 s</span>
+                    </div>
+                    <input type="number" id="inpTime" class="param-input" value="20" min="5" max="60" step="1">
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Paso de Integración (h)</span>
+                        <span id="lblH">2,0 s</span>
+                    </div>
+                    <div class="step-presets">
+                        <button class="btn-preset active" data-h="2.0">2.0 s</button>
+                        <button class="btn-preset" data-h="1.0">1.0 s</button>
+                        <button class="btn-preset" data-h="0.5">0.5 s</button>
+                        <button class="btn-preset" data-h="0.25">0.25 s</button>
+                    </div>
+                </div>
+
+                <div class="param-item">
+                    <div class="param-label">
+                        <span>Método Primario de Cálculo</span>
+                    </div>
+                    <select id="selMethod" class="param-input" style="cursor: pointer;">
+                        <option value="euler">Método de Euler (1.er Orden)</option>
+                        <option value="heun">Método de Heun (Predictor-Corrector 2.° Orden)</option>
+                        <option value="rk4">Runge-Kutta 4.° Orden (RK4)</option>
+                        <option value="all">Comparar Todos Simultáneamente</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-launch" id="btnLaunch">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+                    Iniciar Lanzamiento
+                </button>
+                <button class="btn btn-pause" id="btnPause">Pausar</button>
+                <button class="btn btn-reset" id="btnReset">Reiniciar</button>
+                <button class="btn btn-export" id="btnExport">Descargar CSV de Datos</button>
+            </div>
+
+            <!-- Mathematical Model Card -->
+            <div style="background: #0a0f1d; border: 1px solid var(--border-panel); border-radius: 6px; padding: 10px; font-size: 0.75rem;">
+                <div style="color: var(--accent-cyan); font-weight: bold; margin-bottom: 4px;">ECUACIÓN DINÁMICA DEL COHETE:</div>
+                <div style="font-family: var(--font-mono); color: #e2e8f0;">
+                    dv/dt = (T - mg - kv) / m = <span id="mathEq" style="color: #facc15;">5.19 - 0.1v</span><br>
+                    dy/dt = v &nbsp;&nbsp;|&nbsp;&nbsp; v(0) = 0, y(0) = 0
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: 2D VISUAL SIMULATION STAGE -->
+        <div class="stage-container">
+            <canvas id="rocketCanvas"></canvas>
+            
+            <div class="stage-overlay">
+                <div class="altitude-hud">
+                    <div class="hud-unit">ALTITUD TELEMÉTRICA (y)</div>
+                    <div class="hud-val"><span id="hudAltitude">0.00</span> <span style="font-size: 0.8rem; color: #94a3b8;">m</span></div>
+                </div>
+                <div class="altitude-hud">
+                    <div class="hud-unit">VELOCIDAD ASCENSIONAL (v)</div>
+                    <div class="hud-val" style="color: #34d399;"><span id="hudVelocity">0.00</span> <span style="font-size: 0.8rem; color: #94a3b8;">m/s</span></div>
+                </div>
+                <div class="altitude-hud">
+                    <div class="hud-unit">ACELERACIÓN NETA (a)</div>
+                    <div class="hud-val" style="color: #f59e0b;"><span id="hudAccel">5.19</span> <span style="font-size: 0.8rem; color: #94a3b8;">m/s²</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 3: TELEMETRY & LIVE COMPARISONS -->
+        <div class="panel telemetry-column">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Telemetría Numérica vs Exacta
+                </div>
+                <span id="badgeStep" style="background: #1e3a8a; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-family: var(--font-mono);">h = 2.0s</span>
+            </div>
+
+            <!-- Telemetry Cards Grid -->
+            <div class="telemetry-grid">
+                <div class="telem-card">
+                    <div class="telem-title">Velocidad Numérica</div>
+                    <div class="telem-number" id="cardVNum">0.00 m/s</div>
+                    <div class="telem-sub">
+                        <span>Exacta: <span class="val-exact" id="cardVEx">0.00</span></span>
+                        <span>|Ev|: <span class="val-err" id="cardVErr">0.00</span></span>
+                    </div>
+                </div>
+
+                <div class="telem-card">
+                    <div class="telem-title">Altitud Numérica</div>
+                    <div class="telem-number" id="cardYNum">0.00 m</div>
+                    <div class="telem-sub">
+                        <span>Exacta: <span class="val-exact" id="cardYEx">0.00</span></span>
+                        <span>|Ey|: <span class="val-err" id="cardYErr">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mission Safety Acceptance Banner -->
+            <div id="safetyBanner" class="safety-banner danger">
+                <div class="safety-icon" id="safetyIcon">⚠️</div>
+                <div>
+                    <div style="font-weight: 700;" id="safetyTitle">PRECISIÓN INSUFICIENTE PARA VUELO TRIPULADO</div>
+                    <div style="font-size: 0.75rem;" id="safetyDesc">Con h = 2.0s el error acumulado excede los límites (Ev &lt; 0.5 m/s, Ey &lt; 5 m). Reduce el paso a h &le; 0.5s.</div>
+                </div>
+            </div>
+
+            <!-- Graphs Section -->
+            <div class="charts-section">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span>Curva de Velocidad v(t)</span>
+                        <span style="color: var(--accent-cyan); font-size: 0.7rem;">Euler vs Exacta</span>
+                    </div>
+                    <canvas id="chartVelocity" class="analytics-chart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span>Curva de Altura y(t)</span>
+                        <span style="color: var(--accent-cyan); font-size: 0.7rem;">Euler vs Exacta</span>
+                    </div>
+                    <canvas id="chartAltitude" class="analytics-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Iterations Table -->
+            <div class="chart-card" style="margin-top: 4px;">
+                <div class="chart-header">
+                    <span>Tabla de Iteraciones</span>
+                    <span id="tableRowsCount" style="color: var(--accent-amber); font-size: 0.7rem;">10 pasos</span>
+                </div>
+                <div class="table-container">
+                    <table class="mission-table" id="tableData">
+                        <thead>
+                            <tr>
+                                <th>n</th>
+                                <th>t (s)</th>
+                                <th>v_num</th>
+                                <th>y_num</th>
+                                <th>v_ex</th>
+                                <th>y_ex</th>
+                                <th>|Δy|</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MOVIE TRIBUTE & HISTORICAL CONTEXT FOOTER -->
+    <div class="movie-bar">
+        <div>
+            <strong>Película: Talentos Ocultos / Mentes Brillantes (Hidden Figures, 1962):</strong> 
+            "El método de Euler... Sí, es antiguo, pero funciona y calcula paso a paso." &mdash; Katherine Johnson.
+        </div>
+        <div>
+            Proyecto evaluativo: Métodos Numéricos &bull; Rúbrica 20/20 &bull; NASA Langley Research Center
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // SIMULATION ENGINE & NUMERICAL METHODS
+        // ==========================================
+        const State = {
+            m: 1000.0,
+            T: 15000.0,
+            g: 9.81,
+            k: 100.0,
+            tMax: 20.0,
+            h: 2.0,
+            method: 'euler',
+            
+            // Runtime state
+            tCurrent: 0.0,
+            isRunning: false,
+            animFrameId: null,
+            speedMultiplier: 1.0,
+            
+            // Precomputed simulation points
+            dataEuler: [],
+            dataHeun: [],
+            dataRK4: [],
+            dataExact: []
+        };
+
+        // DOM Elements
+        const inpM = document.getElementById('inpM');
+        const inpT = document.getElementById('inpT');
+        const inpG = document.getElementById('inpG');
+        const inpK = document.getElementById('inpK');
+        const inpTime = document.getElementById('inpTime');
+        const selMethod = document.getElementById('selMethod');
+        const btnLaunch = document.getElementById('btnLaunch');
+        const btnPause = document.getElementById('btnPause');
+        const btnReset = document.getElementById('btnReset');
+        const btnExport = document.getElementById('btnExport');
+        const mathEq = document.getElementById('mathEq');
+        const hudClock = document.getElementById('hudClock');
+        const hudStatus = document.getElementById('hudStatus');
+        const hudAltitude = document.getElementById('hudAltitude');
+        const hudVelocity = document.getElementById('hudVelocity');
+        const hudAccel = document.getElementById('hudAccel');
+        const cardVNum = document.getElementById('cardVNum');
+        const cardVEx = document.getElementById('cardVEx');
+        const cardVErr = document.getElementById('cardVErr');
+        const cardYNum = document.getElementById('cardYNum');
+        const cardYEx = document.getElementById('cardYEx');
+        const cardYErr = document.getElementById('cardYErr');
+        const badgeStep = document.getElementById('badgeStep');
+        const safetyBanner = document.getElementById('safetyBanner');
+        const safetyTitle = document.getElementById('safetyTitle');
+        const safetyDesc = document.getElementById('safetyDesc');
+        const safetyIcon = document.getElementById('safetyIcon');
+        const tableBody = document.getElementById('tableBody');
+        const tableRowsCount = document.getElementById('tableRowsCount');
+
+        // Canvases
+        const rocketCanvas = document.getElementById('rocketCanvas');
+        const ctxRocket = rocketCanvas.getContext('2d');
+        const chartV = document.getElementById('chartVelocity');
+        const ctxV = chartV.getContext('2d');
+        const chartY = document.getElementById('chartAltitude');
+        const ctxY = chartY.getContext('2d');
+
+        // Differential Equation: dv/dt = (T - mg - kv)/m
+        function dvdt(v, m, T, g, k) {
+            return (T / m) - g - (k / m) * v;
+        }
+
+        // Exact Analytical Solution
+        function exactSolution(t, m, T, g, k) {
+            const A = (T / m) - g; // e.g. 15 - 9.81 = 5.19
+            const B = k / m;       // e.g. 100 / 1000 = 0.1
+            const vTerm = A / B;   // e.g. 51.9
+            const v = vTerm * (1.0 - Math.exp(-B * t));
+            const y = vTerm * t - (vTerm / B) * (1.0 - Math.exp(-B * t));
+            const a = A - B * v;
+            return { t, v, y, a };
+        }
+
+        // Run full simulations for all methods
+        function computeAllSimulations() {
+            const { m, T, g, k, tMax, h } = State;
+            const steps = Math.round(tMax / h);
+            
+            // Update UI Formula label
+            const A = ((T / m) - g).toFixed(2);
+            const B = (k / m).toFixed(2);
+            mathEq.innerText = `${A} - ${B}v`;
+
+            // 1. Analytical exact points
+            State.dataExact = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = Math.min(i * h, tMax);
+                State.dataExact.push(exactSolution(t, m, T, g, k));
+            }
+
+            // 2. Euler Method
+            State.dataEuler = [{ t: 0, v: 0, y: 0, a: dvdt(0, m, T, g, k) }];
+            for (let i = 0; i < steps; i++) {
+                const cur = State.dataEuler[i];
+                const a = dvdt(cur.v, m, T, g, k);
+                const vNext = cur.v + h * a;
+                const yNext = cur.y + h * cur.v;
+                const tNext = (i + 1) * h;
+                State.dataEuler.push({ t: tNext, v: vNext, y: yNext, a: dvdt(vNext, m, T, g, k) });
+            }
+
+            // 3. Heun Method (Predictor-Corrector)
+            State.dataHeun = [{ t: 0, v: 0, y: 0, a: dvdt(0, m, T, g, k) }];
+            for (let i = 0; i < steps; i++) {
+                const cur = State.dataHeun[i];
+                const kv1 = dvdt(cur.v, m, T, g, k);
+                const ky1 = cur.v;
+                const vPred = cur.v + h * kv1;
+                const yPred = cur.y + h * ky1;
+                const kv2 = dvdt(vPred, m, T, g, k);
+                const ky2 = vPred;
+                const vNext = cur.v + (h / 2.0) * (kv1 + kv2);
+                const yNext = cur.y + (h / 2.0) * (ky1 + ky2);
+                const tNext = (i + 1) * h;
+                State.dataHeun.push({ t: tNext, v: vNext, y: yNext, a: dvdt(vNext, m, T, g, k) });
+            }
+
+            // 4. Runge-Kutta 4 (RK4)
+            State.dataRK4 = [{ t: 0, v: 0, y: 0, a: dvdt(0, m, T, g, k) }];
+            for (let i = 0; i < steps; i++) {
+                const cur = State.dataRK4[i];
+                const kv1 = dvdt(cur.v, m, T, g, k);
+                const ky1 = cur.v;
+                
+                const kv2 = dvdt(cur.v + 0.5 * h * kv1, m, T, g, k);
+                const ky2 = cur.v + 0.5 * h * kv1;
+                
+                const kv3 = dvdt(cur.v + 0.5 * h * kv2, m, T, g, k);
+                const ky3 = cur.v + 0.5 * h * kv2;
+                
+                const kv4 = dvdt(cur.v + h * kv3, m, T, g, k);
+                const ky4 = cur.v + h * kv3;
+                
+                const vNext = cur.v + (h / 6.0) * (kv1 + 2 * kv2 + 2 * kv3 + kv4);
+                const yNext = cur.y + (h / 6.0) * (ky1 + 2 * ky2 + 2 * ky3 + ky4);
+                const tNext = (i + 1) * h;
+                State.dataRK4.push({ t: tNext, v: vNext, y: yNext, a: dvdt(vNext, m, T, g, k) });
+            }
+
+            updateTableUI();
+            updateSafetyStatus();
+            renderCharts();
+        }
+
+        function getActiveMethodData() {
+            if (State.method === 'heun') return State.dataHeun;
+            if (State.method === 'rk4') return State.dataRK4;
+            return State.dataEuler;
+        }
+
+        // Interpolate position/velocity at any continuous time t
+        function sampleAtTime(t) {
+            const dataNum = getActiveMethodData();
+            const { m, T, g, k } = State;
+            const ex = exactSolution(t, m, T, g, k);
+
+            // Interpolate numeric points
+            const h = State.h;
+            const idx = Math.floor(t / h);
+            if (idx >= dataNum.length - 1) {
+                const last = dataNum[dataNum.length - 1];
+                return { num: last, ex };
+            }
+            const p0 = dataNum[idx];
+            const p1 = dataNum[idx + 1];
+            const frac = (t - p0.t) / (p1.t - p0.t);
+            const vInterp = p0.v + frac * (p1.v - p0.v);
+            const yInterp = p0.y + frac * (p1.y - p0.y);
+            const aInterp = p0.a + frac * (p1.a - p0.a);
+
+            return {
+                num: { t, v: vInterp, y: yInterp, a: aInterp },
+                ex
+            };
+        }
+
+        // Populate Table
+        function updateTableUI() {
+            const dataNum = getActiveMethodData();
+            const dataEx = State.dataExact;
+            tableBody.innerHTML = '';
+            tableRowsCount.innerText = `${dataNum.length} pasos`;
+
+            dataNum.forEach((pt, i) => {
+                const ex = dataEx[i] || exactSolution(pt.t, State.m, State.T, State.g, State.k);
+                const errY = Math.abs(ex.y - pt.y).toFixed(4);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${i}</td>
+                    <td>${pt.t.toFixed(1)}</td>
+                    <td style="color: #38bdf8;">${pt.v.toFixed(4)}</td>
+                    <td>${pt.y.toFixed(4)}</td>
+                    <td style="color: #4ade80;">${ex.v.toFixed(4)}</td>
+                    <td>${ex.y.toFixed(4)}</td>
+                    <td style="color: #f87171; font-weight: bold;">${errY}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Check NASA safety tolerances at t = 20s
+        function updateSafetyStatus() {
+            const dataNum = getActiveMethodData();
+            const lastNum = dataNum[dataNum.length - 1];
+            const lastEx = State.dataExact[State.dataExact.length - 1];
+            
+            const ev = Math.abs(lastEx.v - lastNum.v);
+            const ey = Math.abs(lastEx.y - lastNum.y);
+
+            const isSafe = (ev < 0.5 && ey < 5.0);
+
+            if (isSafe) {
+                safetyBanner.className = 'safety-banner success';
+                safetyIcon.innerText = '✅';
+                safetyTitle.innerText = 'PRECISIÓN CUMPLE REQUISITOS NASA (APTO PARA VUELO)';
+                safetyDesc.innerText = `Errores a t=20s: Δv = ${ev.toFixed(4)} m/s (< 0.5 m/s) y Δy = ${ey.toFixed(4)} m (< 5.0 m).`;
+            } else {
+                safetyBanner.className = 'safety-banner danger';
+                safetyIcon.innerText = '⚠️';
+                safetyTitle.innerText = 'PRECISIÓN INSUFICIENTE PARA VUELO TRIPULADO';
+                safetyDesc.innerText = `Errores a t=20s: Δv = ${ev.toFixed(4)} m/s (> 0.5 m/s) y Δy = ${ey.toFixed(4)} m (> 5.0 m). Prueba un paso menor (h ≤ 0.5s) o RK4.`;
+            }
+        }
+
+        // ==========================================
+        // CANVAS 2D ANIMATION & HUD
+        // ==========================================
+        function resizeCanvas() {
+            const rect = rocketCanvas.getBoundingClientRect();
+            rocketCanvas.width = rect.width * window.devicePixelRatio;
+            rocketCanvas.height = rect.height * window.devicePixelRatio;
+            ctxRocket.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            chartV.width = chartV.clientWidth * window.devicePixelRatio;
+            chartV.height = chartV.clientHeight * window.devicePixelRatio;
+            ctxV.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            chartY.width = chartY.clientWidth * window.devicePixelRatio;
+            chartY.height = chartY.clientHeight * window.devicePixelRatio;
+            ctxY.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            renderStage();
+            renderCharts();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function renderStage() {
+            const w = rocketCanvas.clientWidth;
+            const h = rocketCanvas.clientHeight;
+            ctxRocket.clearRect(0, 0, w, h);
+
+            const sample = sampleAtTime(State.tCurrent);
+            const yCurrent = sample.num.y;
+            const yMax = State.dataExact[State.dataExact.length - 1].y * 1.05 || 600;
+
+            // Sky gradient transition (Day ground -> Dark high atmosphere -> Black space)
+            const altitudeFraction = Math.min(yCurrent / yMax, 1.0);
+            const gradSky = ctxRocket.createLinearGradient(0, h, 0, 0);
+            
+            // Color blend based on altitude
+            if (altitudeFraction < 0.4) {
+                gradSky.addColorStop(0, '#38bdf8');
+                gradSky.addColorStop(0.4, '#0284c7');
+                gradSky.addColorStop(1, '#070f26');
+            } else {
+                gradSky.addColorStop(0, '#0284c7');
+                gradSky.addColorStop(0.5, '#070f26');
+                gradSky.addColorStop(1, '#02050c');
+            }
+            ctxRocket.fillStyle = gradSky;
+            ctxRocket.fillRect(0, 0, w, h);
+
+            // Stars in high atmosphere
+            if (altitudeFraction > 0.2) {
+                ctxRocket.fillStyle = `rgba(255, 255, 255, ${Math.min((altitudeFraction - 0.2) * 1.5, 0.9)})`;
+                for (let i = 0; i < 40; i++) {
+                    const sx = (i * 97) % w;
+                    const sy = (i * 53) % (h * 0.7);
+                    ctxRocket.fillRect(sx, sy, 1.5, 1.5);
+                }
+            }
+
+            // Ground & Launch Pad (moves down as rocket ascends)
+            const groundY = h - 60 + (altitudeFraction * 40);
+            if (groundY < h + 100) {
+                ctxRocket.fillStyle = '#1e293b';
+                ctxRocket.fillRect(0, groundY, w, h - groundY);
+
+                // Service Gantry Tower
+                ctxRocket.strokeStyle = '#dc2626';
+                ctxRocket.lineWidth = 3;
+                const towerX = w * 0.5 - 55;
+                ctxRocket.beginPath();
+                ctxRocket.moveTo(towerX, groundY);
+                ctxRocket.lineTo(towerX, groundY - 140);
+                ctxRocket.lineTo(towerX + 25, groundY - 140);
+                ctxRocket.stroke();
+                // Cross beams
+                for (let b = 0; b < 5; b++) {
+                    ctxRocket.beginPath();
+                    ctxRocket.moveTo(towerX, groundY - b * 28);
+                    ctxRocket.lineTo(towerX + 25, groundY - (b + 1) * 28);
+                    ctxRocket.stroke();
+                }
+            }
+
+            // Rocket Position Calculation
+            const rocketBottomY = groundY - 10 - (altitudeFraction * (h - 180));
+            const rocketX = w * 0.5;
+
+            // Draw Exhaust Flame & Smoke Particles if engines burning
+            if (State.tCurrent > 0 && State.tCurrent < State.tMax) {
+                const flameLen = 30 + Math.random() * 18;
+                const gradFlame = ctxRocket.createLinearGradient(rocketX, rocketBottomY, rocketX, rocketBottomY + flameLen);
+                gradFlame.addColorStop(0, '#ffffff');
+                gradFlame.addColorStop(0.2, '#fde047');
+                gradFlame.addColorStop(0.6, '#ea580c');
+                gradFlame.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
+                ctxRocket.fillStyle = gradFlame;
+                ctxRocket.beginPath();
+                ctxRocket.moveTo(rocketX - 8, rocketBottomY);
+                ctxRocket.lineTo(rocketX + 8, rocketBottomY);
+                ctxRocket.lineTo(rocketX, rocketBottomY + flameLen);
+                ctxRocket.closePath();
+                ctxRocket.fill();
+
+                // Sparkles
+                ctxRocket.fillStyle = '#fef08a';
+                for (let s = 0; s < 4; s++) {
+                    const spX = rocketX + (Math.random() - 0.5) * 14;
+                    const spY = rocketBottomY + flameLen * (0.4 + Math.random() * 0.6);
+                    ctxRocket.fillRect(spX, spY, 2, 2);
+                }
+            }
+
+            // Draw Retro 1962 Rocket (Atlas / Mercury style)
+            const rWidth = 18;
+            const rHeight = 65;
+            const rTop = rocketBottomY - rHeight;
+
+            // Rocket Body
+            ctxRocket.fillStyle = '#f8fafc';
+            ctxRocket.strokeStyle = '#0f172a';
+            ctxRocket.lineWidth = 1.5;
+
+            // Cylindrical Fuselage
+            ctxRocket.beginPath();
+            ctxRocket.rect(rocketX - rWidth/2, rTop + 18, rWidth, rHeight - 18);
+            ctxRocket.fill();
+            ctxRocket.stroke();
+
+            // Nosecone (Mercury Capsule & Escape Tower)
+            ctxRocket.fillStyle = '#1e293b'; // Dark capsule
+            ctxRocket.beginPath();
+            ctxRocket.moveTo(rocketX - rWidth/2, rTop + 18);
+            ctxRocket.lineTo(rocketX, rTop + 4);
+            ctxRocket.lineTo(rocketX + rWidth/2, rTop + 18);
+            ctxRocket.closePath();
+            ctxRocket.fill();
+            ctxRocket.stroke();
+
+            // Escape Tower needle
+            ctxRocket.strokeStyle = '#dc2626';
+            ctxRocket.lineWidth = 1.5;
+            ctxRocket.beginPath();
+            ctxRocket.moveTo(rocketX, rTop + 4);
+            ctxRocket.lineTo(rocketX, rTop - 16);
+            ctxRocket.stroke();
+
+            // Fins
+            ctxRocket.fillStyle = '#dc2626';
+            ctxRocket.beginPath();
+            ctxRocket.moveTo(rocketX - rWidth/2, rocketBottomY - 14);
+            ctxRocket.lineTo(rocketX - rWidth/2 - 10, rocketBottomY);
+            ctxRocket.lineTo(rocketX - rWidth/2, rocketBottomY);
+            ctxRocket.closePath();
+            ctxRocket.fill();
+            ctxRocket.stroke();
+
+            ctxRocket.beginPath();
+            ctxRocket.moveTo(rocketX + rWidth/2, rocketBottomY - 14);
+            ctxRocket.lineTo(rocketX + rWidth/2 + 10, rocketBottomY);
+            ctxRocket.lineTo(rocketX + rWidth/2, rocketBottomY);
+            ctxRocket.closePath();
+            ctxRocket.fill();
+            ctxRocket.stroke();
+
+            // NASA red stripe
+            ctxRocket.fillStyle = '#dc2626';
+            ctxRocket.fillRect(rocketX - rWidth/2, rTop + 32, rWidth, 5);
+
+            // Update Live HUD Elements
+            hudClock.innerText = `T+${State.tCurrent.toFixed(2)}s`;
+            hudAltitude.innerText = sample.num.y.toFixed(2);
+            hudVelocity.innerText = sample.num.v.toFixed(2);
+            hudAccel.innerText = sample.num.a.toFixed(2);
+
+            cardVNum.innerText = `${sample.num.v.toFixed(2)} m/s`;
+            cardVEx.innerText = `${sample.ex.v.toFixed(2)}`;
+            cardVErr.innerText = `${Math.abs(sample.ex.v - sample.num.v).toFixed(2)}`;
+
+            cardYNum.innerText = `${sample.num.y.toFixed(2)} m`;
+            cardYEx.innerText = `${sample.ex.y.toFixed(2)}`;
+            cardYErr.innerText = `${Math.abs(sample.ex.y - sample.num.y).toFixed(2)}`;
+        }
+
+        // ==========================================
+        // ANALYTICAL CHARTS (CANVAS RENDERER)
+        // ==========================================
+        function drawChart(canvas, ctx, title, yLabel, dataSeries, yMaxVal) {
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+
+            const padLeft = 45;
+            const padRight = 15;
+            const padTop = 15;
+            const padBottom = 25;
+            const plotW = w - padLeft - padRight;
+            const plotH = h - padTop - padBottom;
+
+            // Grid lines
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padTop + (plotH / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(padLeft + plotW, y);
+                ctx.stroke();
+
+                // Y label
+                const val = (yMaxVal * (1 - i / 4)).toFixed(0);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(val, padLeft - 6, y + 3);
+            }
+
+            // X Axis
+            for (let i = 0; i <= 4; i++) {
+                const x = padLeft + (plotW / 4) * i;
+                const tVal = (State.tMax * (i / 4)).toFixed(0);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${tVal}s`, x, h - 8);
+            }
+
+            // Plot curves
+            dataSeries.forEach(series => {
+                ctx.strokeStyle = series.color;
+                ctx.lineWidth = series.width || 2;
+                if (series.dash) {
+                    ctx.setLineDash(series.dash);
+                } else {
+                    ctx.setLineDash([]);
+                }
+
+                ctx.beginPath();
+                series.data.forEach((pt, idx) => {
+                    const x = padLeft + (pt.t / State.tMax) * plotW;
+                    const y = padTop + plotH - (pt.val / yMaxVal) * plotH;
+                    if (idx === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+
+                // Draw dots on numeric points
+                if (series.dots) {
+                    ctx.fillStyle = series.color;
+                    series.data.forEach(pt => {
+                        const x = padLeft + (pt.t / State.tMax) * plotW;
+                        const y = padTop + plotH - (pt.val / yMaxVal) * plotH;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+            });
+            ctx.setLineDash([]);
+
+            // Current Time Indicator (vertical red line)
+            if (State.tCurrent > 0) {
+                const curX = padLeft + (State.tCurrent / State.tMax) * plotW;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(curX, padTop);
+                ctx.lineTo(curX, padTop + plotH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function renderCharts() {
+            // Velocity Chart
+            const vMax = State.dataExact[State.dataExact.length - 1].v * 1.15 || 55;
+            const seriesV = [
+                {
+                    name: 'Exacta',
+                    color: '#22c55e',
+                    width: 2.2,
+                    data: State.dataExact.map(p => ({ t: p.t, val: p.v }))
+                },
+                {
+                    name: 'Numérica',
+                    color: '#38bdf8',
+                    width: 1.8,
+                    dash: [4, 4],
+                    dots: true,
+                    data: getActiveMethodData().map(p => ({ t: p.t, val: p.v }))
+                }
+            ];
+            drawChart(chartV, ctxV, 'Velocidad v(t)', 'm/s', seriesV, vMax);
+
+            // Altitude Chart
+            const yMax = State.dataExact[State.dataExact.length - 1].y * 1.15 || 700;
+            const seriesY = [
+                {
+                    name: 'Exacta',
+                    color: '#22c55e',
+                    width: 2.2,
+                    data: State.dataExact.map(p => ({ t: p.t, val: p.y }))
+                },
+                {
+                    name: 'Numérica',
+                    color: '#38bdf8',
+                    width: 1.8,
+                    dash: [4, 4],
+                    dots: true,
+                    data: getActiveMethodData().map(p => ({ t: p.t, val: p.y }))
+                }
+            ];
+            drawChart(chartY, ctxY, 'Altura y(t)', 'm', seriesY, yMax);
+        }
+
+        // ==========================================
+        // ANIMATION LOOP & CONTROLS
+        // ==========================================
+        let lastTimestamp = 0;
+
+        function animationLoop(timestamp) {
+            if (!State.isRunning) return;
+
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaSec = (timestamp - lastTimestamp) / 1000.0;
+            lastTimestamp = timestamp;
+
+            State.tCurrent += deltaSec * State.speedMultiplier;
+
+            if (State.tCurrent >= State.tMax) {
+                State.tCurrent = State.tMax;
+                State.isRunning = false;
+                hudStatus.innerText = 'MISIÓN COMPLETADA';
+                hudStatus.style.color = '#38bdf8';
+                btnLaunch.innerHTML = 'Reiniciar Vuelo';
+            }
+
+            renderStage();
+            renderCharts();
+
+            if (State.isRunning) {
+                State.animFrameId = requestAnimationFrame(animationLoop);
+            }
+        }
+
+        btnLaunch.addEventListener('click', () => {
+            if (State.tCurrent >= State.tMax) {
+                State.tCurrent = 0;
+            }
+            State.isRunning = true;
+            lastTimestamp = 0;
+            hudStatus.innerText = 'EN ASCENSO';
+            hudStatus.style.color = '#22c55e';
+            btnLaunch.innerHTML = 'En Vuelo...';
+            cancelAnimationFrame(State.animFrameId);
+            State.animFrameId = requestAnimationFrame(animationLoop);
+        });
+
+        btnPause.addEventListener('click', () => {
+            State.isRunning = false;
+            cancelAnimationFrame(State.animFrameId);
+            hudStatus.innerText = 'PAUSADO';
+            hudStatus.style.color = '#f59e0b';
+            btnLaunch.innerHTML = 'Reanudar';
+        });
+
+        btnReset.addEventListener('click', () => {
+            State.isRunning = false;
+            cancelAnimationFrame(State.animFrameId);
+            State.tCurrent = 0;
+            lastTimestamp = 0;
+            hudStatus.innerText = 'STANDBY';
+            hudStatus.style.color = '#22c55e';
+            btnLaunch.innerHTML = 'Iniciar Lanzamiento';
+            renderStage();
+            renderCharts();
+        });
+
+        // Step Presets
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                State.h = parseFloat(btn.dataset.h);
+                document.getElementById('lblH').innerText = `${State.h.toFixed(2)} s`;
+                badgeStep.innerText = `h = ${State.h.toFixed(2)}s`;
+                computeAllSimulations();
+                renderStage();
+            });
+        });
+
+        // Inputs Event Listeners
+        function syncInputs() {
+            State.m = parseFloat(inpM.value) || 1000;
+            State.T = parseFloat(inpT.value) || 15000;
+            State.g = parseFloat(inpG.value) || 9.81;
+            State.k = parseFloat(inpK.value) || 100;
+            State.tMax = parseFloat(inpTime.value) || 20;
+
+            document.getElementById('lblM').innerText = `${State.m.toLocaleString()} kg`;
+            document.getElementById('lblT').innerText = `${State.T.toLocaleString()} N`;
+            document.getElementById('lblG').innerText = `${State.g.toFixed(2)} m/s²`;
+            document.getElementById('lblK').innerText = `${State.k} kg/s`;
+            document.getElementById('lblTime').innerText = `${State.tMax} s`;
+
+            computeAllSimulations();
+            renderStage();
+        }
+
+        inpM.addEventListener('input', syncInputs);
+        inpT.addEventListener('input', syncInputs);
+        inpG.addEventListener('input', syncInputs);
+        inpK.addEventListener('input', syncInputs);
+        inpTime.addEventListener('input', syncInputs);
+
+        selMethod.addEventListener('change', () => {
+            State.method = selMethod.value;
+            updateTableUI();
+            updateSafetyStatus();
+            renderCharts();
+            renderStage();
+        });
+
+        // Export CSV
+        btnExport.addEventListener('click', () => {
+            const dataNum = getActiveMethodData();
+            const dataEx = State.dataExact;
+            let csv = "Paso,Tiempo_s,v_num_ms,y_num_m,v_exact_ms,y_exact_m,Error_v_ms,Error_y_m\n";
+
+            dataNum.forEach((pt, i) => {
+                const ex = dataEx[i] || exactSolution(pt.t, State.m, State.T, State.g, State.k);
+                const ev = Math.abs(ex.v - pt.v).toFixed(4);
+                const ey = Math.abs(ex.y - pt.y).toFixed(4);
+                csv += `${i},${pt.t.toFixed(2)},${pt.v.toFixed(4)},${pt.y.toFixed(4)},${ex.v.toFixed(4)},${ex.y.toFixed(4)},${ev},${ey}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `telemetria_nasa_1962_euler_h${State.h}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Initial setup
+        setTimeout(() => {
+            resizeCanvas();
+            computeAllSimulations();
+            renderStage();
+        }, 100);
+    </script>
+</body>
+</html>
